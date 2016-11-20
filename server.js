@@ -1,49 +1,162 @@
 const express = require('express')
-const path = require('path')
-const logger = require('morgan')
-const cookieParser = require('cookie-parser')
-const bodyParser = require('body-parser')
-
-const index = require('./controllers/index')
-
 const app = express()
+const bodyParser = require('body-parser')
+const morgan = require('morgan')
+const mongoose = require('mongoose')
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'))
-// app.set('view engine', 'hbs');
+const jwt = require('jsonwebtoken')
+const User = require('./models/User')
 
-// uncomment after placing your favicon in /public
-// app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-app.use(logger('dev'))
-app.use(bodyParser.json())
+const env = process.env.NODE_ENV === 'production' ? 'prod' : 'dev'
+const config = require('./config')[env]
+
+mongoose.Promise = global.Promise
+mongoose.connect(config.database.host)
+mongoose.connection.on('error', (err) => { console.error('Connection error:', err) })
+mongoose.connection.once('open', () => { console.log('Mongo DB connected!') })
+
 app.use(bodyParser.urlencoded({ extended: false }))
-app.use(cookieParser())
-app.use(require('node-sass-middleware')({
-  src: path.join(__dirname, 'public'),
-  dest: path.join(__dirname, 'public'),
-  indentedSyntax: true,
-  sourceMap: true
-}))
-app.use(express.static(path.join(__dirname, 'public')))
+app.use(bodyParser.json())
 
-app.use('/', index)
+app.use(morgan('dev'))
 
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-  const err = new Error('Not Found')
-  err.status = 404
-  next(err)
+const apiRoutes = express.Router()
+
+app.get('/setup', (req, res) => {
+  const newUser = new User({
+    email: 'lgabster',
+    password: 'lgabster',
+    admin: true
+  })
+  newUser.save((err) => {
+    if (err) {
+      throw err
+    }
+    console.log('User saved successfully')
+    res.json({ success: true })
+  })
 })
 
-// error handler
-app.use(function (err, req, res) {
-  // set locals, only providing error in development
-  res.locals.message = err.message
-  res.locals.error = req.app.get('env') === 'development' ? err : {}
-
-  // render the error page
-  res.status(err.status || 500)
-  res.render('error')
+apiRoutes.post('/user', (req, res) => {
+  User.findOne({
+    email: req.body.email
+  }, (err, user) => {
+    if (err) {
+      throw err
+    }
+    if (user) {
+      res.json({
+        success: false,
+        message: 'User already exist.'
+      })
+    } else {
+      const newUser = new User({
+        email: req.body.email,
+        password: req.body.password,
+        admin: req.body.admin || false
+      })
+      newUser.save((err) => {
+        if (err) {
+          throw err
+        }
+        console.log('User saved successfully')
+        res.json({ success: true })
+      })
+    }
+  })
 })
+
+apiRoutes.get('/user/:email', (req, res) => {
+  User.findOne({
+    email: req.params.email
+  }, (err, user) => {
+    if (err) {
+      throw err
+    }
+    if (!user) {
+      res.json({
+        success: false,
+        message: 'User not in DB.'
+      })
+    } else {
+      res.json(user)
+    }
+  })
+})
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello from API' })
+})
+
+apiRoutes.post('/authenticate', (req, res) => {
+  User.findOne({
+    email: req.body.email
+  }, (err, user) => {
+    if (err) {
+      throw err
+    }
+    if (!user) {
+      res.json({ success: false, message: 'Authentication failed. User not found.' })
+    } else if (user) {
+      if (user.password !== req.body.password) {
+        res.json({ success: false, message: 'Authentication failed. Wrong password.' })
+      } else {
+        const token = jwt.sign(user, config.appSecret, config.tokenOptions)
+
+        res.json({
+          success: true,
+          message: 'Enjoy your token!',
+          token: token
+        })
+      }
+    }
+  })
+})
+
+apiRoutes.use((req, res, next) => {
+  const token = req.body.token || req.param('token') || req.headers['x-access-token']
+
+  if (token) {
+    jwt.verify(token, config.appSecret, (err, decoded) => {
+      if (err) {
+        return res.json({
+          success: false,
+          message: 'Failed to authenticate token.'
+        })
+      } else {
+        req.decoded = decoded
+        next()
+      }
+    })
+  } else {
+    return res.status(403).send({
+      success: false,
+      message: 'No token provided.'
+    })
+  }
+})
+
+apiRoutes.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome in best API ever'
+  })
+})
+
+apiRoutes.get('/users', (req, res) => {
+  User.find({}, (err, users) => {
+    if (err) {
+      res.json({
+        error: err
+      })
+    }
+    res.json(users)
+  })
+})
+
+apiRoutes.get('/check', (req, res) => {
+  res.json(req.decoded)
+})
+
+app.use('/api', apiRoutes)
 
 module.exports = app
