@@ -1,3 +1,9 @@
+app/src/style/*.css
+app/src/style/*.css.map
+
+# Intelij IDE
+.idea
+
 # Logs
 logs
 *.log
