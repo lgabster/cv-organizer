@@ -29,58 +29,11 @@ app.get('/setup', (req, res) => {
     admin: true
   })
   newUser.save((err) => {
-    if (err) {
-      throw err
-    }
-    console.log('User saved successfully')
-    res.json({ success: true })
-  })
-})
-
-apiRoutes.post('/user', (req, res) => {
-  User.findOne({
-    email: req.body.email
-  }, (err, user) => {
-    if (err) {
-      throw err
-    }
-    if (user) {
-      res.json({
-        success: false,
-        message: 'User already exist.'
-      })
-    } else {
-      const newUser = new User({
-        email: req.body.email,
-        password: req.body.password,
-        admin: req.body.admin || false
-      })
-      newUser.save((err) => {
-        if (err) {
-          throw err
-        }
-        console.log('User saved successfully')
-        res.json({ success: true })
-      })
-    }
-  })
-})
-
-apiRoutes.get('/user/:email', (req, res) => {
-  User.findOne({
-    email: req.params.email
-  }, (err, user) => {
-    if (err) {
-      throw err
-    }
-    if (!user) {
-      res.json({
-        success: false,
-        message: 'User not in DB.'
-      })
-    } else {
-      res.json(user)
-    }
+    if (err) throw err
+    res.json({
+      success: true,
+      message: `User 'lgabster' already exist.`
+    })
   })
 })
 
@@ -92,23 +45,20 @@ apiRoutes.post('/authenticate', (req, res) => {
   User.findOne({
     email: req.body.email
   }, (err, user) => {
-    if (err) {
-      throw err
-    }
+    if (err) throw err
     if (!user) {
       res.json({ success: false, message: 'Authentication failed. User not found.' })
     } else if (user) {
-      if (user.password !== req.body.password) {
-        res.json({ success: false, message: 'Authentication failed. Wrong password.' })
-      } else {
+      user.verifyPassword(req.body.password, (err, isMatch) => {
+        if (err) { throw err }
+        if (!isMatch) { res.json({ success: false, message: 'Authentication failed. Wrong password.' }) }
         const token = jwt.sign(user, config.appSecret, config.tokenOptions)
-
         res.json({
           success: true,
           message: 'Enjoy your token!',
           token: token
         })
-      }
+      })
     }
   })
 })
@@ -129,7 +79,7 @@ apiRoutes.use((req, res, next) => {
       }
     })
   } else {
-    return res.status(403).send({
+    return res.status(403).json({
       success: false,
       message: 'No token provided.'
     })
@@ -137,25 +87,77 @@ apiRoutes.use((req, res, next) => {
 })
 
 apiRoutes.get('/', (req, res) => {
-  res.json({
-    message: 'Welcome in best API ever'
-  })
+  res.json({ message: 'Welcome in best API ever' })
 })
 
 apiRoutes.get('/users', (req, res) => {
   User.find({}, (err, users) => {
-    if (err) {
-      res.json({
-        error: err
-      })
-    }
+    if (err) { res.json({ error: err }) }
     res.json(users)
   })
 })
 
-apiRoutes.get('/check', (req, res) => {
-  res.json(req.decoded)
+apiRoutes.post('/user', (req, res) => {
+  User.findOne({
+    email: req.body.email
+  }, (err, user) => {
+    if (err) throw err
+    if (user) {
+      res.json({
+        success: false,
+        message: `User '${user.email}' already exist.`
+      })
+    } else {
+      const newUser = new User({
+        email: req.body.email,
+        password: req.body.password,
+        admin: req.body.admin || false
+      })
+      newUser.save((err) => {
+        if (err) throw err
+        res.json({
+          success: true,
+          message: `User '${req.body.email}' saved successfully`
+        })
+      })
+    }
+  })
 })
+
+apiRoutes.get('/user/:email', (req, res) => {
+  User.findOne({
+    email: req.params.email
+  }, (err, user) => {
+    if (err) throw err
+    if (!user) {
+      res.json({
+        success: false,
+        message: `User '${req.params.email}' not in DB.`
+      })
+    } else { res.json(user) }
+  })
+})
+
+apiRoutes.delete('/user/:email', (req, res) => {
+  if (req.decoded._doc.admin) {
+    User.find({
+      email: req.params.email
+    }).remove((err) => {
+      if (err) throw err
+      res.json({
+        success: true,
+        message: `User '${req.params.email}' successfull removed`
+      })
+    })
+  } else {
+    res.json({
+      success: false,
+      message: 'Only admin users allow delete permission.'
+    })
+  }
+})
+
+apiRoutes.get('/check', (req, res) => { res.json(req.decoded) })
 
 app.use('/api', apiRoutes)
 
