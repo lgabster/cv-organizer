@@ -33,3 +33,10 @@
     }
   }
 </script>
+
+<style lang="sass">
+  .navbar {
+    border-radius: 0;
+  }
+</style>
+

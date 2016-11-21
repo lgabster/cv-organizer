@@ -12,10 +12,3 @@
     }
   }
 </script>
-
-<style lang="sass">
-  @import '../style/variables';
-  .main-content {
-    background-color: $color-red;
-  }
-</style>

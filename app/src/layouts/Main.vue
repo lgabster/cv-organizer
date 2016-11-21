@@ -14,15 +14,16 @@
   import HeaderComponent from './Header.vue'
   import FooterComponent from './Footer.vue'
   export default {
-    data() {
-      return {
-        msg:'hello vue',
-        asd: 'asasd'
-      }
-    },
     components: {
       HeaderComponent,
       FooterComponent
     }
   }
 </script>
+
+<style lang="sass">
+  @import '../style/variables';
+  body {
+    background-color: $color-white;
+  }
+</style>

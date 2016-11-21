@@ -4,7 +4,6 @@ import routes from './routes'
 const mainCss = require('./style/main.scss')
 
 const app = new Vue({
-  el: '#app',
   data: {
     currentRoute: window.location.pathname,
     message: 'Vue message',
@@ -21,7 +20,7 @@ const app = new Vue({
   render: function(h) {
     return h(this.ViewComponent)
   }
-})
+}).$mount('#app')
 
 window.addEventListener('popstate', () => {
   app.currentRoute = window.location.pathname
