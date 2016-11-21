@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "node": "node ./bin/www",
-    "dev": "cross-env NODE_ENV=development webpack-dev-server -d -w --open --hot --inline"
+    "dev": "cross-env NODE_ENV=development webpack-dev-server -d -w --open --hot --inline",
+    "prod": "cross-env NODE_ENV=development webpack"
   },
   "dependencies": {
     "bcrypt-nodejs": "0.0.3",

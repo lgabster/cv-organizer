@@ -22,7 +22,9 @@ module.exports = {
         test: /\.vue$/,
         loader: 'vue-loader',
         options: {
-          // vue-loader options go here
+          loaders: {
+            scss: 'vue-style!css!sass'
+          }
         }
       },
       {
@@ -31,7 +33,7 @@ module.exports = {
         exclude: /node_modules/
       },
       {
-        test: /\.scss$/,
+        test: /\.s[a|c]ss$/,
         loaders: ExtractTextPlugin.extract({
           fallbackLoader: 'style-loader',
           loader: 'css-loader!sass-loader'
